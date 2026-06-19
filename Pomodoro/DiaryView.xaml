@@ -1,0 +1,166 @@
+<UserControl x:Class="Pomodoro.DiaryView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="320"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- ===== Left: Calendar ===== -->
+        <Border Grid.Column="0" Margin="8,8,4,8" Background="White"
+                CornerRadius="8" BorderBrush="#E0E0E0" BorderThickness="1">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- Month Navigation -->
+                <StackPanel Grid.Row="0" Orientation="Horizontal"
+                            HorizontalAlignment="Center" Margin="0,12,0,8">
+                    <Button x:Name="PrevMonthBtn" Content="◀" Width="28" Height="28"
+                            Background="Transparent" BorderThickness="0"
+                            FontSize="14" Cursor="Hand" Click="PrevMonthBtn_Click"/>
+                    <TextBlock x:Name="MonthYearLabel" Text="2026年6月"
+                               FontSize="16" FontWeight="Bold"
+                               VerticalAlignment="Center" Margin="12,0"
+                               Foreground="{StaticResource borderColor}"/>
+                    <Button x:Name="NextMonthBtn" Content="▶" Width="28" Height="28"
+                            Background="Transparent" BorderThickness="0"
+                            FontSize="14" Cursor="Hand" Click="NextMonthBtn_Click"/>
+                </StackPanel>
+
+                <!-- Goals -->
+                <Border Grid.Row="1" Margin="8,0,8,4" Padding="8,6"
+                        Background="#FFF8E1" CornerRadius="6"
+                        BorderBrush="#FFE082" BorderThickness="1">
+                    <StackPanel>
+                        <TextBlock Text="🎯 本月目标" FontSize="11" FontWeight="Bold"
+                                   Foreground="#F57F17"/>
+                        <TextBox x:Name="MonthGoalBox" FontSize="12"
+                                 BorderThickness="0" Background="Transparent"
+                                 TextWrapping="Wrap" MaxHeight="40"
+                                 TextChanged="MonthGoalBox_TextChanged"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Row="2" Margin="8,0,8,6" Padding="8,6"
+                        Background="#E8F5E9" CornerRadius="6"
+                        BorderBrush="#A5D6A7" BorderThickness="1">
+                    <StackPanel>
+                        <TextBlock Text="📅 本周目标" FontSize="11" FontWeight="Bold"
+                                   Foreground="#2E7D32"/>
+                        <TextBox x:Name="WeekGoalBox" FontSize="12"
+                                 BorderThickness="0" Background="Transparent"
+                                 TextWrapping="Wrap" MaxHeight="40"
+                                 TextChanged="WeekGoalBox_TextChanged"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Day-of-week header -->
+                <Grid Grid.Row="3" Margin="4,4,4,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/><ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/><ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/><ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="日" HorizontalAlignment="Center"
+                               FontSize="10" Foreground="#CC0000" Margin="0,2"/>
+                    <TextBlock Grid.Column="1" Text="一" HorizontalAlignment="Center"
+                               FontSize="10" Foreground="#666666" Margin="0,2"/>
+                    <TextBlock Grid.Column="2" Text="二" HorizontalAlignment="Center"
+                               FontSize="10" Foreground="#666666" Margin="0,2"/>
+                    <TextBlock Grid.Column="3" Text="三" HorizontalAlignment="Center"
+                               FontSize="10" Foreground="#666666" Margin="0,2"/>
+                    <TextBlock Grid.Column="4" Text="四" HorizontalAlignment="Center"
+                               FontSize="10" Foreground="#666666" Margin="0,2"/>
+                    <TextBlock Grid.Column="5" Text="五" HorizontalAlignment="Center"
+                               FontSize="10" Foreground="#666666" Margin="0,2"/>
+                    <TextBlock Grid.Column="6" Text="六" HorizontalAlignment="Center"
+                               FontSize="10" Foreground="#666666" Margin="0,2"/>
+                </Grid>
+
+                <!-- Calendar Grid -->
+                <Grid x:Name="CalendarGrid" Grid.Row="4" Margin="4,0,4,4">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/><RowDefinition Height="*"/>
+                        <RowDefinition Height="*"/><RowDefinition Height="*"/>
+                        <RowDefinition Height="*"/><RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/><ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/><ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/><ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                </Grid>
+            </Grid>
+        </Border>
+
+        <!-- ===== Right: Diary Editor ===== -->
+        <Border Grid.Column="1" Margin="4,8,8,8" Background="White"
+                CornerRadius="8" BorderBrush="#E0E0E0" BorderThickness="1">
+            <Grid Margin="16">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Date Header -->
+                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
+                    <TextBlock x:Name="SelectedDateEmoji" Text="📅"
+                               FontSize="20" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="SelectedDateText" Text="选择日期"
+                               FontSize="18" FontWeight="Bold"
+                               Foreground="{StaticResource borderColor}"
+                               VerticalAlignment="Center" Margin="8,0,0,0"/>
+                </StackPanel>
+
+                <!-- Navigation arrows between dates -->
+                <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
+                    <Button x:Name="PrevDayBtn" Content="◀ 前一天" FontSize="12"
+                            Background="#F5F5F5" BorderThickness="1"
+                            BorderBrush="#E0E0E0" Padding="8,4"
+                            Cursor="Hand" Click="PrevDayBtn_Click"/>
+                    <Button x:Name="NextDayBtn" Content="后一天 ▶" FontSize="12"
+                            Background="#F5F5F5" BorderThickness="1"
+                            BorderBrush="#E0E0E0" Padding="8,4" Margin="4,0,0,0"
+                            Cursor="Hand" Click="NextDayBtn_Click"/>
+                    <Button x:Name="TodayBtn" Content="今天" FontSize="12"
+                            Background="#E8F4FD" BorderThickness="1"
+                            BorderBrush="#B8D8F8" Padding="8,4" Margin="4,0,0,0"
+                            Cursor="Hand" Foreground="#4A90D9"
+                            Click="TodayBtn_Click"/>
+                </StackPanel>
+
+                <!-- Outline Editor -->
+                <ScrollViewer x:Name="OutlineScroller" Grid.Row="2"
+                              VerticalScrollBarVisibility="Auto"
+                              Background="#FAFAFA">
+                    <StackPanel x:Name="OutlinePanel" Margin="4,4,4,4"/>
+                </ScrollViewer>
+                <TextBlock x:Name="EmptyHint" Grid.Row="2" Text="点击日历日期开始写日记"
+                           FontSize="14" Foreground="#BBBBBB"
+                           IsHitTestVisible="False"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+
+                <!-- Save Button -->
+                <Border Grid.Row="3" Width="100" Height="36" CornerRadius="6"
+                        Background="#BA4949" Margin="0,12,0,0"
+                        HorizontalAlignment="Right" Cursor="Hand">
+                    <Button x:Name="SaveDiaryBtn" Content="💾 保存"
+                            Background="Transparent" Foreground="White"
+                            FontSize="13" FontWeight="SemiBold"
+                            BorderThickness="0" Click="SaveDiaryBtn_Click"/>
+                </Border>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

@@ -1,4 +1,4 @@
-using NAudio.Wave;
+﻿using NAudio.Wave;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -93,6 +93,7 @@ namespace Pomodoro
             ("出行", "#66B8B0", "🚗"),
             ("社交", "#F5B895", "💬"),
             ("创作", "#D0A0C8", "🎨"),
+            ("睡觉", "#5B6ABF", "😴"),
         };
 
         // Alarm state
@@ -993,6 +994,7 @@ namespace Pomodoro
                 ? Visibility.Visible : Visibility.Collapsed;
 
             UpdateTodayTotal();
+            UpdateTimeStatsChart();
         }
 
         private void LoadTimeBlocks()
@@ -1522,10 +1524,12 @@ namespace Pomodoro
             SidebarPomodoroBorder.Background = (SolidColorBrush)FindResource("mainColorDark");
             SidebarTodoBorder.Background = Brushes.Transparent;
             SidebarWeightBorder.Background = Brushes.Transparent;
+            SidebarDiaryBorder.Background = Brushes.Transparent;
             ModeTabBar.Visibility = Visibility.Visible;
             PomodoroView.Visibility = Visibility.Visible;
             TodoView.Visibility = Visibility.Collapsed;
             WeightView.Visibility = Visibility.Collapsed;
+            DiaryView.Visibility = Visibility.Collapsed;
         }
 
         private void SidebarTodo_Click(object sender, RoutedEventArgs e)
@@ -1533,10 +1537,12 @@ namespace Pomodoro
             SidebarTodoBorder.Background = (SolidColorBrush)FindResource("mainColorDark");
             SidebarPomodoroBorder.Background = Brushes.Transparent;
             SidebarWeightBorder.Background = Brushes.Transparent;
+            SidebarDiaryBorder.Background = Brushes.Transparent;
             ModeTabBar.Visibility = Visibility.Collapsed;
             PomodoroView.Visibility = Visibility.Collapsed;
             TodoView.Visibility = Visibility.Visible;
             WeightView.Visibility = Visibility.Collapsed;
+            DiaryView.Visibility = Visibility.Collapsed;
 
             // Refresh time block display when navigating to todo
             RefreshTimeBlockList();
@@ -1595,6 +1601,144 @@ namespace Pomodoro
             TodoListBox.ItemsSource = _todoItems;
         }
 
+        private void UpdateTimeStatsChart()
+        {
+            TimeStatsCanvas.Children.Clear();
+            TimeStatsLegend.Children.Clear();
+
+            var today = DateTime.Today;
+            var todayBlocks = _timeBlocks
+                .Where(t => t.StartTime.Date == today && t.EndTime.HasValue)
+                .ToList();
+
+            if (todayBlocks.Count == 0)
+            {
+                TimeStatsSummary.Text = "今日暂无记录";
+                return;
+            }
+
+            // Group by activity (Name + ColorHex) and sum durations
+            var groups = todayBlocks
+                .GroupBy(t => new { t.Name, t.ColorHex })
+                .Select(g => new
+                {
+                    Name = g.Key.Name,
+                    ColorHex = g.Key.ColorHex,
+                    TotalSeconds = g.Sum(t => (t.EndTime.Value - t.StartTime).TotalSeconds)
+                })
+                .OrderByDescending(g => g.TotalSeconds)
+                .ToList();
+
+            double totalTrackedSec = groups.Sum(g => g.TotalSeconds);
+            double daySec = 24 * 3600;
+            double remainingSec = daySec - totalTrackedSec;
+
+            // ---- Draw donut chart ----
+            const double cx = 110, cy = 110;
+            const double outerR = 100, innerR = 62;
+            double currentAngle = -90;
+
+            foreach (var g in groups)
+            {
+                double sweep = (g.TotalSeconds / daySec) * 360.0;
+                if (sweep < 0.1) continue;
+                TimeStatsCanvas.Children.Add(MakeArcPath(cx, cy, outerR, innerR, currentAngle, sweep, g.ColorHex));
+                currentAngle += sweep;
+            }
+
+            // Remaining/untracked time segment
+            if (remainingSec > 30)
+            {
+                double sweep = (remainingSec / daySec) * 360.0;
+                if (sweep > 0.1)
+                    TimeStatsCanvas.Children.Add(MakeArcPath(cx, cy, outerR, innerR, currentAngle, sweep, "#EAEAEA"));
+            }
+
+            // ---- Build summary ----
+            TimeStatsSummary.Text = $"已记录 {FormatDuration(totalTrackedSec)} / 24h，剩余 {FormatDuration(remainingSec)}";
+
+            // ---- Build legend ----
+            foreach (var g in groups)
+            {
+                var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 5) };
+
+                row.Children.Add(new Border
+                {
+                    Width = 12, Height = 12,
+                    CornerRadius = new CornerRadius(2),
+                    Background = (Brush)new BrushConverter().ConvertFromString(g.ColorHex),
+                    Margin = new Thickness(0, 2, 6, 0)
+                });
+
+                row.Children.Add(new TextBlock
+                {
+                    Text = g.Name, FontSize = 13, FontWeight = System.Windows.FontWeights.SemiBold,
+                    Foreground = (Brush)new BrushConverter().ConvertFromString("#333333"),
+                    VerticalAlignment = System.Windows.VerticalAlignment.Center,
+                    Margin = new Thickness(0, 0, 8, 0)
+                });
+
+                row.Children.Add(new TextBlock
+                {
+                    Text = FormatDuration(g.TotalSeconds),
+                    FontSize = 12,
+                    Foreground = (Brush)new BrushConverter().ConvertFromString("#888888"),
+                    VerticalAlignment = System.Windows.VerticalAlignment.Center
+                });
+
+                row.Children.Add(new TextBlock
+                {
+                    Text = $" ({g.TotalSeconds / daySec * 100:F1}%)",
+                    FontSize = 11,
+                    Foreground = (Brush)new BrushConverter().ConvertFromString("#AAAAAA"),
+                    VerticalAlignment = System.Windows.VerticalAlignment.Center,
+                    Margin = new Thickness(4, 0, 0, 0)
+                });
+
+                TimeStatsLegend.Children.Add(row);
+            }
+        }
+
+        private static System.Windows.Shapes.Path MakeArcPath(double cx, double cy, double outerR, double innerR,
+            double startDeg, double sweepDeg, string colorHex)
+        {
+            double startRad = startDeg * Math.PI / 180;
+            double endRad = (startDeg + sweepDeg) * Math.PI / 180;
+
+            var outerStart = new Point(cx + outerR * Math.Cos(startRad), cy + outerR * Math.Sin(startRad));
+            var outerEnd = new Point(cx + outerR * Math.Cos(endRad), cy + outerR * Math.Sin(endRad));
+            var innerStart = new Point(cx + innerR * Math.Cos(startRad), cy + innerR * Math.Sin(startRad));
+            var innerEnd = new Point(cx + innerR * Math.Cos(endRad), cy + innerR * Math.Sin(endRad));
+
+            bool largeArc = sweepDeg > 180;
+
+            var figure = new PathFigure { StartPoint = outerStart };
+            figure.Segments.Add(new ArcSegment(outerEnd, new Size(outerR, outerR), 0,
+                largeArc, SweepDirection.Clockwise, true));
+            figure.Segments.Add(new LineSegment(innerEnd, true));
+            figure.Segments.Add(new ArcSegment(innerStart, new Size(innerR, innerR), 0,
+                largeArc, SweepDirection.Counterclockwise, true));
+            figure.IsClosed = true;
+
+            var geom = new PathGeometry();
+            geom.Figures.Add(figure);
+
+            return new System.Windows.Shapes.Path
+            {
+                Data = geom,
+                Fill = (Brush)new BrushConverter().ConvertFromString(colorHex),
+                Stroke = Brushes.Transparent
+            };
+        }
+
+        private static string FormatDuration(double totalSeconds)
+        {
+            var ts = TimeSpan.FromSeconds(totalSeconds);
+            if (ts.TotalHours >= 1)
+                return $"{(int)ts.TotalHours}h {ts.Minutes}m";
+            return $"{ts.Minutes}m";
+        }
+
         private void SaveTodos()
         {
             try
@@ -1625,10 +1769,12 @@ namespace Pomodoro
             SidebarWeightBorder.Background = (SolidColorBrush)FindResource("mainColorDark");
             SidebarPomodoroBorder.Background = Brushes.Transparent;
             SidebarTodoBorder.Background = Brushes.Transparent;
+            SidebarDiaryBorder.Background = Brushes.Transparent;
             ModeTabBar.Visibility = Visibility.Collapsed;
             PomodoroView.Visibility = Visibility.Collapsed;
             TodoView.Visibility = Visibility.Collapsed;
             WeightView.Visibility = Visibility.Visible;
+            DiaryView.Visibility = Visibility.Collapsed;
 
             if (_weightData == null)
             {
@@ -1640,6 +1786,19 @@ namespace Pomodoro
             RefreshWeightChart();
             RefreshWeightStats();
             RefreshWeightHistory();
+        }
+
+        private void SidebarDiary_Click(object sender, RoutedEventArgs e)
+        {
+            SidebarDiaryBorder.Background = (SolidColorBrush)FindResource("mainColorDark");
+            SidebarPomodoroBorder.Background = Brushes.Transparent;
+            SidebarTodoBorder.Background = Brushes.Transparent;
+            SidebarWeightBorder.Background = Brushes.Transparent;
+            ModeTabBar.Visibility = Visibility.Collapsed;
+            PomodoroView.Visibility = Visibility.Collapsed;
+            TodoView.Visibility = Visibility.Collapsed;
+            WeightView.Visibility = Visibility.Collapsed;
+            DiaryView.Visibility = Visibility.Visible;
         }
 
         private void RefreshWeightChart()
@@ -1663,7 +1822,8 @@ namespace Pomodoro
                 Position = OxyPlot.Axes.AxisPosition.Bottom,
                 StringFormat = "MM/dd",
                 IntervalType = OxyPlot.Axes.DateTimeIntervalType.Days,
-                MinorIntervalType = OxyPlot.Axes.DateTimeIntervalType.Days,
+                MajorStep = 1,
+                MinorIntervalType = OxyPlot.Axes.DateTimeIntervalType.Auto,
             };
             model.Axes.Add(dateAxis);
 
@@ -1719,6 +1879,10 @@ namespace Pomodoro
                 // Set reasonable axis range
                 dateAxis.Minimum = OxyPlot.Axes.DateTimeAxis.ToDouble(sorted[0].Date.AddDays(-1));
                 dateAxis.Maximum = OxyPlot.Axes.DateTimeAxis.ToDouble(sorted[^1].Date.AddDays(1));
+
+                // Adaptive X-axis spacing: <10天→1，<30天→3，<60天→7，否则→14
+                var daySpan = (sorted[^1].Date - sorted[0].Date).TotalDays;
+                dateAxis.MajorStep = daySpan < 10 ? 1 : daySpan < 30 ? 3 : daySpan < 60 ? 7 : 14;
             }
 
             _weightChart = new PlotView { Model = model };
@@ -1820,3 +1984,6 @@ namespace Pomodoro
         #endregion
     }
 }
+
+
+

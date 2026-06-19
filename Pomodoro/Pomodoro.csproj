@@ -27,6 +27,7 @@
     <GenerateManifests>false</GenerateManifests>
     <SignManifests>false</SignManifests>
     <NoWin32Manifest>true</NoWin32Manifest>
+    <ApplicationIcon>app.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
     <Resource Include="Images\pause-solid.png" />
@@ -36,6 +37,9 @@
     <Resource Include="Images\github.png" />
     <Resource Include="Images\Pomodoro_Logo.ico" />
     <Resource Include="Pomodoro_Logo.ico" />
+    <Content Include="app.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Resource Include="Images\mute.png" />
     <Resource Include="Images\speaker.png" />
     <Content Include="Sounds\end.wav" />
@@ -71,4 +75,7 @@
     <PackageReference Include="System.Windows.Interactivity.WPF" Version="2.0.20525" NoWarn="NU1701" />
     <PackageReference Include="System.Security.AccessControl" Version="6.0.0" />
   </ItemGroup>
+  <Target Name="InjectAppIcon" AfterTargets="AfterBuild">
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\inject-icon.ps1&quot; -ExePath &quot;$(TargetPath)&quot; -IcoPath &quot;$(MSBuildProjectDirectory)\app.ico&quot;" />
+  </Target>
 </Project>
